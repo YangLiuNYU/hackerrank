@@ -32,15 +32,23 @@ struct Cluster{
 struct MoreWorkload {
   bool operator()(const Cluster & left, const Cluster & right) {
     // notice that I used double instead of integer here.
-    double left_workload = left.machine_count==0? left.workload : left.workload/left.machine_count;
-    double right_workload = right.machine_count==0? right.workload : right.workload/right.machine_count;
+    double left_workload  = left.workload/left.machine_count;
+    double right_workload = right.workload/right.machine_count;
     return left_workload < right_workload;
   }
 };
 
 typedef std::priority_queue<Cluster,vector<Cluster>,MoreWorkload > MaxHeap;
 
-int AdjustWorkload(MaxHeap & cluster_workloads,int cluster_num,int machine_num) {
+int AdjustWorkload(vector<int> & workloads,int cluster_num,int machine_num) {
+  MaxHeap cluster_workloads;
+
+  // each cluster has at least one machine
+  for (int i=0;i<cluster_num;++i) {
+    cluster_workloads.push(Cluster(workloads[i],1));
+    -- machine_num;// reduce machine number
+  }
+  // always add machine to the cluster which has maximum workload
   for (int i=0;i<machine_num;++i) {
     Cluster max_cluster = cluster_workloads.top();
     cluster_workloads.pop();
@@ -53,16 +61,14 @@ int AdjustWorkload(MaxHeap & cluster_workloads,int cluster_num,int machine_num) 
 
 void UnitTest() {
   // test 1
-  vector<Cluster> clusters = {Cluster(200,0),Cluster(450,0)};
-  MaxHeap max_heap;
-  for (const Cluster & c : clusters) max_heap.push(c);
-  assert(AdjustWorkload(max_heap,2,7) == 100);
+  vector<int> workloads = {200,450};
+  int cluster_num = 2, machine_num = 7;
+  assert(AdjustWorkload(workloads,cluster_num,machine_num) == 100);
 
   // test 2
-  vector<Cluster> clusters2 = {Cluster(200,0),Cluster(450,0),Cluster(300,0),Cluster(720,0)};
-  MaxHeap max_heap2;
-  for (const Cluster & c : clusters2) max_heap2.push(c);
-  assert( AdjustWorkload(max_heap2,4,10) == 200 );
+  workloads = {200,450,300,720};
+  cluster_num = 4, machine_num = 10;
+  assert( AdjustWorkload(workloads,cluster_num,machine_num) == 200 );
 }
 
 int main() {

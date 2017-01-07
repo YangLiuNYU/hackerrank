@@ -17,21 +17,25 @@ with the order of its digits reversed and an additional "1" appended to the end.
 #include <cassert>
 #include <iostream>
 #include <sstream>
-std::string FibonacciEncoding(int number) {
-  if (number<1) return "";
 
-  std::vector<int> digits = {1,2};// Fibonacci Encoding sequence
-  while (digits.back()<number) {
-    digits.push_back(digits[digits.size()-2]+digits.back());
+using namespace std;
+
+std::string FibonacciEncoding(int n) {
+  if (n<1) return "";
+  // Fibonacci sequence
+  vector<int> fib_sequence = {1,2};
+  // we need have the greatest Fibonacci number smaller than n,
+  // or if could the one equals to n.
+  while (fib_sequence.back()<n) {
+    fib_sequence.push_back(fib_sequence[fib_sequence.size()-2]+fib_sequence.back());
   }
-
-  int index = std::lower_bound(digits.begin(),digits.end(),number) - digits.begin();
-  if (digits[index]>number) --index;
+  int index = std::lower_bound(fib_sequence.begin(),fib_sequence.end(),n) - fib_sequence.begin();
+  if (fib_sequence[index]>n) --index;
   std::string res("");
   while (index>=0) {
-    if (digits[index] <= number) {
+    if (fib_sequence[index]<=n) {
       res.push_back('1');
-      number -= digits[index];
+      n -= fib_sequence[index];
     } else {
       res.push_back('0');
     }
