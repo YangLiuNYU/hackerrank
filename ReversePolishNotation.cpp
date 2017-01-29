@@ -1,92 +1,160 @@
-/*
-https://www.hackerrank.com/contests/hacksouthcarolinaint/challenges/reverse-polish-notation
-*/
-
-#include <cmath>
-#include <cstdio>
+#include <memory>
 #include <vector>
+#include <unordered_map>
+#include <cassert>
 #include <iostream>
-#include <algorithm>
-#include <sstream>
+#include <exception>
 #include <stdexcept>
-using namespace std;
 
-int Calculate(const std::vector<std::string> & tokens) {
-  std::vector<int> operands;
-  for (const std::string token : tokens) {
-    if (!token.empty() && !std::isdigit(token[0])) {
-      if (token[0]=='+') {
-        int right = operands.back();
-        operands.pop_back();
-        operands.back() += right;
-      } else if (token[0]=='-') {
-        int right = operands.back();
-        operands.pop_back();
-        operands.back() -= right;
-      } else if (token[0]=='*') {
-        int right = operands.back();
-        operands.pop_back();
-        operands.back() *= right;
-      } else if (token[0]=='/') {
-        int right = operands.back();
-        operands.pop_back();
-        operands.back() /= right;
-      } else if (token[0]=='x') {
-        int n2 = operands.back();
-        operands.pop_back();
-        int n1 = operands.back();
-        operands.pop_back();
-        operands.push_back(n1 * n1 + n2);
-      } else if (token[0]=='y') {
-        int n = operands.back();
-        operands.pop_back();
-        operands.push_back( 2 * n + 1);
-      } else if (token[0]=='z') {
-        int n3 = operands.back();
-        operands.pop_back();
-        int n2 = operands.back();
-        operands.pop_back();
-        int n1 = operands.back();
-        operands.pop_back();
-        operands.push_back(n1 + 2 * n2 + 3 * n3);
-      } else {
-        //do nothing
-      }
-    }  else  {
-      operands.push_back(std::stoi(token));
-    }
+class Token;
+typedef std::shared_ptr<Token> TokenPtr;
+
+
+class Token {
+public:
+  Token(double val = 0) : m_value(val) {}
+  virtual ~Token() {}
+  virtual void Execute(std::vector<TokenPtr> & tokens) {
+    tokens.push_back(std::make_shared<Token>(m_value));
   }
-  return operands.back();
+  void SetValue(double value) {
+    m_value = value;
+  }
+  double GetValue() const  {
+    return m_value;
+  }
+private:
+  double m_value;
+};
+
+class Add : public Token {
+public:
+  Add() {}
+  virtual ~Add() {}
+  virtual void Execute(std::vector<TokenPtr> & tokens) {
+    double right = tokens.back()->GetValue();
+    tokens.pop_back();
+    tokens.back()->SetValue(tokens.back()->GetValue() + right);
+  }
+};
+
+
+class Sub : public Token {
+public:
+  Sub() {}
+  virtual ~Sub() {}
+  virtual void Execute(std::vector<TokenPtr> & tokens) {
+    double right = tokens.back()->GetValue();
+    tokens.pop_back();
+    tokens.back()->SetValue(tokens.back()->GetValue() - right);
+  }
+};
+
+class Mul : public Token {
+public:
+  Mul() {}
+  virtual ~Mul() {}
+  virtual void Execute(std::vector<TokenPtr> & tokens) {
+    double right = tokens.back()->GetValue();
+    tokens.pop_back();
+    tokens.back()->SetValue(tokens.back()->GetValue() * right);
+  }
+};
+
+class Div : public Token {
+public:
+  Div() {}
+  virtual ~Div() {}
+  virtual void Execute(std::vector<TokenPtr> & tokens) {
+    double right = tokens.back()->GetValue();
+    tokens.pop_back();
+    tokens.back()->SetValue(tokens.back()->GetValue() / right);
+  }
+};
+
+class OperatorCreator {
+public:
+  OperatorCreator(){}
+  virtual ~OperatorCreator(){}
+  virtual TokenPtr Create() = 0;
+};
+typedef std::shared_ptr<OperatorCreator> OperatorCreatorPtr;
+
+class AddCreator : public OperatorCreator {
+public:
+  virtual TokenPtr Create() {
+    TokenPtr reval =  std::make_shared<Add>();
+    return reval;
+  }
+};
+
+class SubCreator : public OperatorCreator {
+public:
+  virtual TokenPtr Create() {
+    TokenPtr reval =  std::make_shared<Sub>();
+    return reval;
+  }
+};
+
+class MulCreator : public OperatorCreator {
+public:
+  virtual TokenPtr Create() {
+    TokenPtr reval =  std::make_shared<Mul>();
+    return reval;
+  }
+};
+
+class DivCreator : public OperatorCreator {
+public:
+  virtual TokenPtr Create() {
+    TokenPtr reval =  std::make_shared<Div>();
+    return reval;
+  }
+};
+
+class TokenFactory {
+public:
+  TokenFactory(){}
+  TokenPtr GetToken(const std::string & str) {
+    TokenPtr reval;
+    if (m_mapper.count(str) != 0) {
+      reval =  m_mapper[str]->Create();
+    } else {
+      reval = std::make_shared<Token>(std::stod(str));
+    }
+    return reval;
+  }
+  void RegisterOperator(const std::string & str, const OperatorCreatorPtr & op) {
+    if (str.empty() || !op) return;
+    m_mapper[str] = op;
+  }
+private:
+  std::unordered_map<std::string, OperatorCreatorPtr> m_mapper;
+};
+
+double EvaluateRPN(std::vector<std::string> strs) {
+  std::vector<TokenPtr> tokens;
+  TokenFactory token_factory;
+  OperatorCreatorPtr add_creator = std::make_shared<AddCreator>();
+  OperatorCreatorPtr sub_creator = std::make_shared<SubCreator>();
+  OperatorCreatorPtr mul_creator = std::make_shared<MulCreator>();
+  OperatorCreatorPtr div_creator = std::make_shared<DivCreator>();
+  token_factory.RegisterOperator("+",add_creator);
+  token_factory.RegisterOperator("-",sub_creator);
+  token_factory.RegisterOperator("*",mul_creator);
+  token_factory.RegisterOperator("/",div_creator);
+  for (const std::string & str : strs) {
+      token_factory.GetToken(str)->Execute(tokens);
+  }
+  return tokens.back()->GetValue();
 }
 
 void UnitTest() {
-  std::vector<std::string> tokens = {"1","+","2"};
+  std::vector<std::string> strs = {"3","2","5","/","+","2","4","*","-"};
+  std::cout << EvaluateRPN(strs) << std::endl;
 }
 
 int main() {
-  /* Enter your code here. Read input from STDIN. Print output to STDOUT */
-  std::string temp("");
-  std::getline(std::cin,temp);
-  int num_of_test = std::stoi(temp);
-  std::istringstream iss;
-  std::vector<std::string> tokens;
-  for (int i=0;i<num_of_test;++i) {
-    iss.clear();
-    tokens.clear();
-
-    std::getline(std::cin,temp);
-    iss.str(temp);
-
-    while (iss>>temp) {
-      tokens.push_back(temp);
-    }
-
-    try {
-      std::cout<< Calculate(tokens) << std::endl;
-    } catch(const std::exception & err) {
-      std::cout << "NO" << std::endl;
-    }
-
-  }
+  UnitTest();
   return 0;
 }
